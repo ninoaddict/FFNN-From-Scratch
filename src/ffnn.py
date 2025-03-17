@@ -42,6 +42,12 @@ class FFNN:
         for layer in self.layers:
             layer.weights -= learning_rate * layer.grad_weights
             layer.biases -= learning_rate * layer.grad_biases
+    
+    def rms_norm(self):
+        for layer in self.layers:
+            mean = np.mean(layer.weights)
+            variance = np.var(layer.weights)
+            layer.weights = (layer.weights - mean) / np.sqrt(variance + 1e-6)
 
     def train(
         self,
@@ -52,6 +58,7 @@ class FFNN:
         epochs=100,
         batch_size=32,
         verbose=1,
+        rms_norm=False
     ):
         loss_fn = getattr(LossFunctions, loss_function)
         history = []
@@ -72,6 +79,8 @@ class FFNN:
                 loss_grad = loss_fn(y_batch, preds, derivative=True)
                 self.backward(loss_grad)
                 self.update_weights(learning_rate)
+                if rms_norm:
+                    self.rms_norm()
                 epoch_loss += loss
 
             epoch_loss /= num_samples // batch_size
