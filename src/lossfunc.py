@@ -1,6 +1,5 @@
 import numpy as np
 
-
 class LossFunctions:
     @staticmethod
     def mse(y_true, y_pred, derivative=False):
