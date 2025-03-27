@@ -60,31 +60,42 @@ class FFNN:
 
     def train(
         self,
-        X,
-        y,
+        x_train,
+        y_train,
+        x_val,
+        y_val,
         loss_function="mse",
         learning_rate=0.01,
         epochs=100,
         batch_size=32,
         verbose=1,
+        
         rms_norm=False,
     ):
         loss_fn = getattr(LossFunctions, loss_function)
-        history = []
-        num_samples = X.shape[0]
+        history = {
+            "training_loss": [],
+            "val_loss": [],
+        }
+        num_samples = x_train.shape[0]
 
-        if loss_function == "categorical_cross_entropy" and len(y.shape) == 1:
-            y = np.eye(self.num_classes)[y]
+        if loss_function == "categorical_cross_entropy":
+            if len(y_train.shape) == 1:
+                y_train = np.eye(self.num_classes)[y_train]
+            if len(y_val.shape) == 1:
+                y_val = np.eye(self.num_classes)[y_val]
 
         for epoch in range(epochs):
+            # shuffle the dataset for each epoch
             indices = np.arange(num_samples)
             np.random.shuffle(indices)
-            X_shuffled, y_shuffled = X[indices], y[indices]
+            x_shuffled, y_shuffled = x_train[indices], y_train[indices]
 
+            # train process
             epoch_loss = 0
             for start in range(0, num_samples, batch_size):
                 end = min(start + batch_size, num_samples - 1)
-                X_batch, y_batch = X_shuffled[start:end], y_shuffled[start:end]
+                X_batch, y_batch = x_shuffled[start:end], y_shuffled[start:end]
 
                 preds = self.__forward(X_batch)
                 loss = loss_fn(y_batch, preds)
@@ -96,11 +107,16 @@ class FFNN:
                 epoch_loss += loss
 
             epoch_loss /= (num_samples // batch_size)
-            history.append(epoch_loss)
+            history["training_loss"].append(epoch_loss)
+            
+            # compute validation loss
+            val_preds = self.__forward(x_val)
+            val_loss = loss_fn(y_val, val_preds)
+            history["val_loss"].append(val_loss)
 
             if verbose:
-                print(f"Epoch {epoch+1}/{epochs} - Loss: {epoch_loss:.4f}")
-        return history
+                print(f"Epoch {epoch+1}/{epochs} - Training Loss: {epoch_loss:.4f} - Validation Loss: {val_loss:.4f}")
+        return history["training_loss"], history["val_loss"]
     
     def predict(self, x):
         return self.__forward(x)
