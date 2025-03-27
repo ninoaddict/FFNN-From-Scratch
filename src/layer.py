@@ -1,6 +1,7 @@
 import numpy as np
 from actfunc import ActivationFunctions
 
+
 class Layer:
     def __init__(
         self,
@@ -31,10 +32,17 @@ class Layer:
                 mean, np.sqrt(variance), (input_size, output_size)
             )
             self.biases = np.random.normal(mean, np.sqrt(variance), (1, output_size))
+        elif weight_init == "he":
+            self.weights = np.random.normal(
+                0, np.sqrt(2 / input_size), (input_size, output_size)
+            )
+            self.biases = np.zeros((1, output_size))
+        elif weight_init == "xavier":
+            limit = np.sqrt(6 / (input_size + output_size))
+            self.weights = np.random.uniform(-limit, limit, (input_size, output_size))
+            self.biases = np.zeros((1, output_size))
         else:
-            raise ValueError(
-                "Unknown weight initialization method"
-            )  # add more for bonus
+            raise ValueError("Unknown weight initialization method")
 
         self.input = None
         self.output = None
