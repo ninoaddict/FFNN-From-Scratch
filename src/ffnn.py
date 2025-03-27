@@ -4,7 +4,6 @@ import numpy as np
 from lossfunc import LossFunctions
 from layer import Layer
 
-
 class FFNN:
     def __init__(
         self,
@@ -13,9 +12,12 @@ class FFNN:
         weight_init="uniform",
         lower=-0.1,
         upper=0.1,
+        mean=0,
+        variance=1,
         seed=None,
     ):
         self.layers = []
+        self.num_classes = layer_sizes[len(layer_sizes) - 1]
         for i in range(len(layer_sizes) - 1):
             self.layers.append(
                 Layer(
@@ -25,6 +27,8 @@ class FFNN:
                     weight_init,
                     lower,
                     upper,
+                    mean,
+                    variance,
                     seed,
                 )
             )
@@ -63,6 +67,9 @@ class FFNN:
         loss_fn = getattr(LossFunctions, loss_function)
         history = []
         num_samples = X.shape[0]
+        
+        if loss_function == 'categorical_cross_entropy' and len(y.shape) == 1:
+            y = np.eye(self.num_classes)[y]
 
         for epoch in range(epochs):
             indices = np.arange(num_samples)

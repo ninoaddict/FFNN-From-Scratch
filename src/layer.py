@@ -3,7 +3,7 @@ from actfunc import ActivationFunctions
 
 class Layer:
     def __init__(
-        self, input_size, output_size, activation, weight_init, lower, upper, seed
+        self, input_size, output_size, activation, weight_init, lower, upper, mean, variance, seed
     ):
         self.activation_name = activation
         self.activation = getattr(ActivationFunctions, activation)
@@ -18,8 +18,8 @@ class Layer:
             self.weights = np.random.uniform(lower, upper, (input_size, output_size))
             self.biases = np.random.uniform(lower, upper, (1, output_size))
         elif weight_init == "normal":
-            self.weights = np.random.normal(lower, upper, (input_size, output_size))
-            self.biases = np.random.normal(lower, upper, (1, output_size))
+            self.weights = np.random.normal(mean, np.sqrt(variance), (input_size, output_size))
+            self.biases = np.random.normal(mean, np.sqrt(variance), (1, output_size))
         else:
             raise ValueError("Unknown weight initialization method") # add more for bonus
 
@@ -34,8 +34,17 @@ class Layer:
         return self.output
 
     def backward(self, grad_output):
-        activation_grad = self.activation(self.output, derivative=True)
-        grad = grad_output * activation_grad
+        if self.activation_name == 'softmax':
+            grad_list = []
+            for i in range(self.output.shape[0]):
+                s = self.output[i].reshape(-1, 1)
+                jacobian = np.diagflat(s) - np.dot(s, s.T)
+                grad_i = np.dot(grad_output[i:i+1], jacobian)
+                grad_list.append(grad_i)
+            grad = np.concatenate(grad_list, axis=0)
+        else:
+            activation_grad = self.activation(self.output, derivative=True)
+            grad = grad_output * activation_grad
 
         self.grad_weights = self.input.T @ grad
         self.grad_biases = np.sum(grad, axis=0, keepdims=True)

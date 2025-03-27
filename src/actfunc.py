@@ -25,4 +25,13 @@ class ActivationFunctions:
     def softmax(x, derivative=False):
         exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
         softmax_x = exp_x / np.sum(exp_x, axis=-1, keepdims=True)
-        return softmax_x if not derivative else softmax_x * (1 - softmax_x)
+        
+        if not derivative:
+            return softmax_x
+    
+        batch_size, n_classes = softmax_x.shape
+        jacobians = np.empty((batch_size, n_classes, n_classes))
+        for i in range(batch_size):
+            s = softmax_x[i].reshape(-1, 1)
+            jacobians[i] = np.diagflat(s) - np.dot(s, s.T)
+        return jacobians
