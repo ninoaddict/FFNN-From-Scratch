@@ -6,6 +6,7 @@ from lossfunc import LossFunctions
 from layer import Layer
 import networkx as nx
 from adjustText import adjust_text
+from tqdm import tqdm
 
 class FFNN:
     def __init__(
@@ -84,6 +85,11 @@ class FFNN:
                 y_train = np.eye(self.num_classes)[y_train]
             if len(y_val.shape) == 1:
                 y_val = np.eye(self.num_classes)[y_val]
+        else:
+            if len(y_train.shape) == 1:
+                y_train = y_train.reshape(len(y_train), 1)
+            if len(y_val.shape) == 1:
+                y_val = y_val.reshape(len(y_val), 1)
 
         for epoch in range(epochs):
             # shuffle the dataset for each epoch
@@ -93,6 +99,9 @@ class FFNN:
 
             # train process
             epoch_loss = 0
+            num_batches = (num_samples + batch_size - 1) // batch_size
+            if verbose:
+                pbar = tqdm(total=num_batches, desc=f"Epoch {epoch+1}/{epochs}", unit="batch")
             for start in range(0, num_samples, batch_size):
                 end = min(start + batch_size, num_samples - 1)
                 X_batch, y_batch = x_shuffled[start:end], y_shuffled[start:end]
@@ -105,6 +114,10 @@ class FFNN:
                 if rms_norm:
                     self.__rms_norm()
                 epoch_loss += loss
+                if verbose:
+                    pbar.update(1)
+            if verbose:
+                pbar.close()
 
             epoch_loss /= (num_samples // batch_size)
             history["training_loss"].append(epoch_loss)
@@ -120,6 +133,9 @@ class FFNN:
     
     def predict(self, x):
         return self.__forward(x)
+    
+    def predict_class(self, x):
+        return np.argmax(self.__forward(x), axis=1)
 
     def save_model(self, filename: str):
         with open(filename, "wb") as f:
