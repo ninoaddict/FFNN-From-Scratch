@@ -4,6 +4,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from lossfunc import LossFunctions
 from layer import Layer
+import networkx as nx
+from adjustText import adjust_text
 
 class FFNN:
     def __init__(
@@ -18,6 +20,8 @@ class FFNN:
         seed=None,
     ):
         self.layers = []
+        self.layer_sizes = layer_sizes
+        self.activations = activations
         self.num_classes = layer_sizes[len(layer_sizes) - 1]
         for i in range(len(layer_sizes) - 1):
             self.layers.append(
@@ -110,8 +114,8 @@ class FFNN:
         with open(filename, "rb") as f:
             return pickle.load(f)
 
-    def plot_weight_distribution(self):
-        for i in range(len(self.layers)):
+    def plot_weight_distribution(self, layers):
+        for i in layers:
             weights = self.layers[i].weights.flatten()
             plt.hist(weights, bins=30, alpha=0.7, label=f"Layer {i}")
         plt.legend()
@@ -120,12 +124,47 @@ class FFNN:
         plt.ylabel("Frequency")
         plt.show()
 
-    def plot_gradient_distribution(self):
-        for i in range(len(self.layers)):
+    def plot_gradient_distribution(self, layers):
+        for i in layers:
             grads = self.layers[i].grad_weights.flatten()
             plt.hist(grads, bins=30, alpha=0.7, label=f"Layer {i}")
         plt.legend()
         plt.title("Gradient Distribution")
         plt.xlabel("Gradient Values")
         plt.ylabel("Frequency")
+        plt.show()
+
+    def display_graph(self):
+        G = nx.DiGraph()
+        pos = {}
+        node_cnt = 0
+        layer_x_offset = 1
+        
+        for layer_idx, num_neurons in enumerate(self.layer_sizes):
+            for neuron_idx in range(num_neurons):
+                G.add_node(node_cnt, Layer=layer_idx)
+                pos[node_cnt] = (layer_x_offset * layer_idx, -neuron_idx)
+                node_cnt += 1
+        
+        node_cnt = 0
+        for layer_idx in range(len(self.layers)):
+            num_neurons_curr = self.layer_sizes[layer_idx]
+            num_neurons_next = self.layer_sizes[layer_idx + 1]
+            for i in range(num_neurons_curr):
+                for j in range(num_neurons_next):
+                    weight = self.layers[layer_idx].weights[i, j]
+                    G.add_edge(node_cnt + i, node_cnt + num_neurons_curr + j, weight=weight)
+            node_cnt += num_neurons_curr
+        
+        plt.figure(figsize=(8, 6))
+        labels = {node: f'N{node}' for node in G.nodes()}
+        edge_labels = {(i, j): f'{d["weight"]:.2f}' for i, j, d in G.edges(data=True)}
+        
+        nx.draw(G, pos, with_labels=True, labels=labels, node_size=700, node_color='lightblue')
+        text_labels = []
+        for (i, j), label in edge_labels.items():
+            x, y = (pos[i][0] + pos[j][0]) / 2, (pos[i][1] + pos[j][1]) / 2  # Midpoint
+            text_labels.append(plt.text(x, y, label, fontsize=8))
+        adjust_text(text_labels, )
+        plt.title("Feed Forward Neural Network Visualization")
         plt.show()

@@ -61,9 +61,4 @@ class Layer:
 
         self.grad_weights = self.input.T @ grad
         self.grad_biases = np.sum(grad, axis=0, keepdims=True)
-        print("==========")
-        print(grad_output.shape)
-        # print(activation_grad.shape)
-        print(grad.shape)
-        print(self.weights.T.shape)
         return grad @ self.weights.T
