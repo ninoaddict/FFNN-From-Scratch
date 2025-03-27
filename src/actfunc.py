@@ -35,3 +35,17 @@ class ActivationFunctions:
             s = softmax_x[i].reshape(-1, 1)
             jacobians[i] = np.diagflat(s) - np.dot(s, s.T)
         return jacobians
+    
+    @staticmethod
+    def swish(x, derivative=False):
+        sig = 1 / (1 + np.exp(-x))
+        if derivative:
+            return sig + x * sig * (1 - sig)
+        return x * sig
+    
+    @staticmethod
+    def elu(x, derivative=False, alpha=1.0):
+        if derivative:
+            turunan = np.where(x >= 0, 1, alpha * np.exp(x))
+            return turunan
+        return np.where(x >= 0, x, alpha * (np.exp(x) - 1))
