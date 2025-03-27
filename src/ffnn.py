@@ -55,9 +55,8 @@ class FFNN:
 
     def __rms_norm(self):
         for layer in self.layers:
-            mean = np.mean(layer.weights)
-            variance = np.var(layer.weights)
-            layer.weights = (layer.weights - mean) / np.sqrt(variance + 1e-6)
+            rms = np.sqrt(np.mean(layer.weights ** 2) + 1e-6)
+            layer.weights = layer.weights / rms
 
     def train(
         self,
