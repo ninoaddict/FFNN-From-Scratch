@@ -134,7 +134,7 @@ class FFNN:
                         loss += reg_lambda * (np.sum(layer.weights**2))
 
                 self.__backward(loss_grad)
-                self.__update_weights(learning_rate)
+                self.__update_weights(learning_rate, regularization, reg_lambda)
                 epoch_loss += loss
                 if verbose:
                     pbar.update(1)
