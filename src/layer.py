@@ -1,3 +1,4 @@
+from typing import Literal
 import numpy as np
 from actfunc import ActivationFunctions
 from rmsnorm import RMSNorm
@@ -8,8 +9,8 @@ class Layer:
         self,
         input_size: int,
         output_size: int,
-        activation: str,
-        weight_init: str,
+        activation: Literal["linear", "relu", "sigmoid", "tanh", "softmax", "swish", "elu"],
+        weight_init: Literal["zero", "uniform", "normal", "he", "xavier"],
         lower: float,
         upper: float,
         mean: float,
@@ -44,7 +45,8 @@ class Layer:
             self.weights = np.random.uniform(-limit, limit, (input_size, output_size))
             self.biases = np.zeros((1, output_size))
         else:
-            raise ValueError("Unknown weight initialization method")
+            self.weights = np.zeros((input_size, output_size))
+            self.biases = np.zeros((1, output_size))
 
         self.input = None
         self.output = None

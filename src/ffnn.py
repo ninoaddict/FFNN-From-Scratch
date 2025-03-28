@@ -1,5 +1,5 @@
 import pickle
-from typing import List
+from typing import List, Literal, Union
 import matplotlib.pyplot as plt
 import numpy as np
 from lossfunc import LossFunctions
@@ -12,8 +12,8 @@ class FFNN:
     def __init__(
         self,
         layer_sizes: List[int],
-        activations: List[str],
-        weight_init="uniform",
+        activations: List[Literal["linear", "relu", "sigmoid", "tanh", "softmax", "swish", "elu"]],
+        weight_init: Literal["zero", "uniform", "normal", "he", "xavier"]="uniform",
         lower=-0.5,
         upper=0.5,
         mean=0,
@@ -78,12 +78,12 @@ class FFNN:
         y_train,
         x_val,
         y_val,
-        loss_function="mse",
+        loss_function:Literal["mse", "binary_cross_entropy", "categorical_cross_entropy"]="mse",
         learning_rate=0.01,
         epochs=100,
         batch_size=32,
         verbose=1,
-        regularization=None,
+        regularization:Union[None, Literal["l1", "l2"]]=None,
         reg_lambda=0.0,
     ):
         loss_fn = getattr(LossFunctions, loss_function)
