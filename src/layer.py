@@ -1,5 +1,6 @@
 import numpy as np
 from actfunc import ActivationFunctions
+from rmsnorm import RMSNorm
 
 
 class Layer:
@@ -14,6 +15,7 @@ class Layer:
         mean: float,
         variance: float,
         seed,
+        use_rmsnorm: bool=True
     ):
         self.activation_name = activation
         self.activation = getattr(ActivationFunctions, activation)
@@ -48,10 +50,20 @@ class Layer:
         self.output = None
         self.grad_weights = np.zeros((input_size, output_size))
         self.grad_biases = np.zeros((1, output_size))
+        
+        self.use_rmsnorm = use_rmsnorm
+        if self.use_rmsnorm:
+            self.rmsnorm = RMSNorm(output_size)
+        else:
+            self.rmsnorm = None
 
     def forward(self, x):
         self.input = x
-        self.output = self.activation(x @ self.weights + self.biases)
+        z = x @ self.weights
+        if self.use_rmsnorm:
+            z = self.rmsnorm.forward(z)
+        z = z + self.biases
+        self.output = self.activation(z)
         return self.output
 
     def backward(self, grad_output):
@@ -66,7 +78,13 @@ class Layer:
         else:
             activation_grad = self.activation(self.output, derivative=True)
             grad = grad_output * activation_grad
-
-        self.grad_weights = self.input.T @ grad
+        
+        # calculate the bias grad
         self.grad_biases = np.sum(grad, axis=0, keepdims=True)
+
+        # calculate the weight grad and g grad if applicable
+        if self.use_rmsnorm:
+            grad = self.rmsnorm.backward(grad)        
+        
+        self.grad_weights = self.input.T @ grad
         return grad @ self.weights.T

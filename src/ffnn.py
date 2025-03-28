@@ -19,6 +19,7 @@ class FFNN:
         mean=0,
         variance=1,
         seed=None,
+        use_rmsnorm=False
     ):
         self.layers = []
         self.layer_sizes = layer_sizes
@@ -36,6 +37,7 @@ class FFNN:
                     mean,
                     variance,
                     seed,
+                    use_rmsnorm
                 )
             )
 
@@ -56,18 +58,19 @@ class FFNN:
                 reg_l1 = reg_lambda * np.sign(layer.weights)
                 layer.weights -= learning_rate * (layer.grad_weights + reg_l1)
                 layer.biases -= learning_rate * layer.grad_biases
+                if layer.use_rmsnorm:
+                    layer.rmsnorm.g -= learning_rate * layer.rmsnorm.grad_g
             elif regularization == "l2":
                 reg_l2 = reg_lambda * 2 * layer.weights
                 layer.weights -= learning_rate * (layer.grad_weights + reg_l2)
                 layer.biases -= learning_rate * layer.grad_biases
+                if layer.use_rmsnorm:
+                    layer.rmsnorm.g -= learning_rate * layer.rmsnorm.grad_g
             else:
                 layer.weights -= learning_rate * layer.grad_weights
                 layer.biases -= learning_rate * layer.grad_biases
-
-    def __rms_norm(self):
-        for layer in self.layers:
-            rms = np.sqrt(np.mean(layer.weights**2) + 1e-6)
-            layer.weights = layer.weights / rms
+                if layer.use_rmsnorm:
+                    layer.rmsnorm.g -= learning_rate * layer.rmsnorm.grad_g
 
     def train(
         self,
@@ -80,7 +83,6 @@ class FFNN:
         epochs=100,
         batch_size=32,
         verbose=1,
-        rms_norm=False,
         regularization=None,
         reg_lambda=0.0,
     ):
@@ -133,8 +135,6 @@ class FFNN:
 
                 self.__backward(loss_grad)
                 self.__update_weights(learning_rate)
-                if rms_norm:
-                    self.__rms_norm()
                 epoch_loss += loss
                 if verbose:
                     pbar.update(1)
