@@ -48,14 +48,25 @@ class FFNN:
         for layer in reversed(self.layers):
             loss_grad = layer.backward(loss_grad)
 
-    def __update_weights(self, learning_rate: float):
+    def __update_weights(
+        self, learning_rate: float, regularization=None, reg_lambda=0.0
+    ):
         for layer in self.layers:
-            layer.weights -= learning_rate * layer.grad_weights
-            layer.biases -= learning_rate * layer.grad_biases
+            if regularization == "l1":
+                reg_l1 = reg_lambda * np.sign(layer.weights)
+                layer.weights -= learning_rate * (layer.grad_weights + reg_l1)
+                layer.biases -= learning_rate * layer.grad_biases
+            elif regularization == "l2":
+                reg_l2 = reg_lambda * 2 * layer.weights
+                layer.weights -= learning_rate * (layer.grad_weights + reg_l2)
+                layer.biases -= learning_rate * layer.grad_biases
+            else:
+                layer.weights -= learning_rate * layer.grad_weights
+                layer.biases -= learning_rate * layer.grad_biases
 
     def __rms_norm(self):
         for layer in self.layers:
-            rms = np.sqrt(np.mean(layer.weights ** 2) + 1e-6)
+            rms = np.sqrt(np.mean(layer.weights**2) + 1e-6)
             layer.weights = layer.weights / rms
 
     def train(
@@ -69,8 +80,9 @@ class FFNN:
         epochs=100,
         batch_size=32,
         verbose=1,
-        
         rms_norm=False,
+        regularization=None,
+        reg_lambda=0.0,
     ):
         loss_fn = getattr(LossFunctions, loss_function)
         history = {
@@ -100,7 +112,9 @@ class FFNN:
             epoch_loss = 0
             num_batches = (num_samples + batch_size - 1) // batch_size
             if verbose:
-                pbar = tqdm(total=num_batches, desc=f"Epoch {epoch+1}/{epochs}", unit="batch")
+                pbar = tqdm(
+                    total=num_batches, desc=f"Epoch {epoch+1}/{epochs}", unit="batch"
+                )
             for start in range(0, num_samples, batch_size):
                 end = min(start + batch_size, num_samples - 1)
                 X_batch, y_batch = x_shuffled[start:end], y_shuffled[start:end]
@@ -108,6 +122,15 @@ class FFNN:
                 preds = self.__forward(X_batch)
                 loss = loss_fn(y_batch, preds)
                 loss_grad = loss_fn(y_batch, preds, derivative=True)
+
+                # add regularization to the loss function
+                if regularization == "l1":
+                    for layer in self.layers:
+                        loss += reg_lambda * (np.sum(np.abs(layer.weights)))
+                elif regularization == "l2":
+                    for layer in self.layers:
+                        loss += reg_lambda * (np.sum(layer.weights**2))
+
                 self.__backward(loss_grad)
                 self.__update_weights(learning_rate)
                 if rms_norm:
@@ -118,21 +141,23 @@ class FFNN:
             if verbose:
                 pbar.close()
 
-            epoch_loss /= (num_samples // batch_size)
+            epoch_loss /= num_samples // batch_size
             history["training_loss"].append(epoch_loss)
-            
+
             # compute validation loss
             val_preds = self.__forward(x_val)
             val_loss = loss_fn(y_val, val_preds)
             history["val_loss"].append(val_loss)
 
             if verbose:
-                print(f"Epoch {epoch+1}/{epochs} - Training Loss: {epoch_loss:.4f} - Validation Loss: {val_loss:.4f}")
+                print(
+                    f"Epoch {epoch+1}/{epochs} - Training Loss: {epoch_loss:.4f} - Validation Loss: {val_loss:.4f}"
+                )
         return history["training_loss"], history["val_loss"]
-    
+
     def predict(self, x):
         return self.__forward(x)
-    
+
     def predict_class(self, x):
         return np.argmax(self.__forward(x), axis=1)
 
@@ -170,13 +195,13 @@ class FFNN:
         pos = {}
         node_cnt = 0
         layer_x_offset = 1
-        
+
         for layer_idx, num_neurons in enumerate(self.layer_sizes):
             for neuron_idx in range(num_neurons):
                 G.add_node(node_cnt, Layer=layer_idx)
                 pos[node_cnt] = (layer_x_offset * layer_idx, -neuron_idx)
                 node_cnt += 1
-        
+
         node_cnt = 0
         for layer_idx in range(len(self.layers)):
             num_neurons_curr = self.layer_sizes[layer_idx]
@@ -184,18 +209,29 @@ class FFNN:
             for i in range(num_neurons_curr):
                 for j in range(num_neurons_next):
                     weight = self.layers[layer_idx].weights[i, j]
-                    G.add_edge(node_cnt + i, node_cnt + num_neurons_curr + j, weight=weight)
+                    G.add_edge(
+                        node_cnt + i, node_cnt + num_neurons_curr + j, weight=weight
+                    )
             node_cnt += num_neurons_curr
-        
+
         plt.figure(figsize=(8, 6))
-        labels = {node: f'N{node}' for node in G.nodes()}
+        labels = {node: f"N{node}" for node in G.nodes()}
         edge_labels = {(i, j): f'{d["weight"]:.2f}' for i, j, d in G.edges(data=True)}
-        
-        nx.draw(G, pos, with_labels=True, labels=labels, node_size=700, node_color='lightblue')
+
+        nx.draw(
+            G,
+            pos,
+            with_labels=True,
+            labels=labels,
+            node_size=700,
+            node_color="lightblue",
+        )
         text_labels = []
         for (i, j), label in edge_labels.items():
             x, y = (pos[i][0] + pos[j][0]) / 2, (pos[i][1] + pos[j][1]) / 2  # Midpoint
             text_labels.append(plt.text(x, y, label, fontsize=8))
-        adjust_text(text_labels, )
+        adjust_text(
+            text_labels,
+        )
         plt.title("Feed Forward Neural Network Visualization")
         plt.show()
