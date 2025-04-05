@@ -50,6 +50,7 @@ class Layer:
 
         self.input = None
         self.output = None
+        self.z = None
         self.grad_weights = np.zeros((input_size, output_size))
         self.grad_biases = np.zeros((1, output_size))
         
@@ -65,20 +66,20 @@ class Layer:
         if self.use_rmsnorm:
             z = self.rmsnorm.forward(z)
         z = z + self.biases
+        self.z = z
         self.output = self.activation(z)
         return self.output
 
     def backward(self, grad_output):
         if self.activation_name == "softmax":
+            jacobians = self.activation(self.z, self.output, derivative=True)
             grad_list = []
             for i in range(self.output.shape[0]):
-                s = self.output[i].reshape(-1, 1)
-                jacobian = np.diagflat(s) - np.dot(s, s.T)
-                grad_i = np.dot(grad_output[i : i + 1], jacobian)
+                grad_i = np.dot(grad_output[i : i + 1], jacobians[i])
                 grad_list.append(grad_i)
             grad = np.concatenate(grad_list, axis=0)
         else:
-            activation_grad = self.activation(self.output, derivative=True)
+            activation_grad = self.activation(self.z, self.output, derivative=True)
             grad = grad_output * activation_grad
         
         # calculate the bias grad
@@ -87,6 +88,6 @@ class Layer:
         # calculate the weight grad and g grad if applicable
         if self.use_rmsnorm:
             grad = self.rmsnorm.backward(grad)        
-        
+
         self.grad_weights = self.input.T @ grad
         return grad @ self.weights.T
